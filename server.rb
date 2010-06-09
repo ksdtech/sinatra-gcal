@@ -4,7 +4,8 @@ Bundler.setup
 
 require 'sinatra'
 require 'tzinfo'
-require 'net/http'
+require 'net/https'
+require 'open-uri'
 require 'uri'
 require 'ri_cal'
 require 'yaml'
@@ -12,7 +13,8 @@ require 'yaml'
 configure do
   config_file = File.expand_path(File.join(File.dirname(__FILE__)), 'config.yml')
   config = YAML.load_file(config_file)
-  set :gcal, config['gcal']
+  set :default_color, config['default_color']
+  set :calendars, config['calendars']
   set :lookahead, config['lookahead']
   set :timezone, TZInfo::Timezone.get(config['timezone'])
 end
@@ -37,12 +39,34 @@ helpers do
     Date.new(current.year, current.month, current.day)
   end
   
-  def gcal_url
-    "http://www.google.com/calendar/ical/#{options.gcal}/public/basic.ics"
+  def calendar_id(calendar_name)
+    options.calendars[calendar_name]['calendar_id']
+  end
+
+  def private_key(calendar_name)
+    options.calendars[calendar_name]['private_key']
+  end
+
+  def calendar_private?(calendar_name)
+    !options.calendars[calendar_name]['private_key'].empty? rescue false
+  end
+
+  def calendar_color(calendar_name)
+    options.calendars[calendar_name]['color'] rescue options.default_color
   end
   
-  def gcal_feed_url
-    "http://www.google.com/calendar/feeds/#{options.gcal}/public/basic"
+  def gcal_url(calendar_name)
+    calendar_id = calendar_id(calendar_name)
+    calendar_private?(calendar_name) ?
+      "https://www.google.com/calendar/ical/#{calendar_id}/private-#{private_key(calendar_name)}/basic.ics" :
+      "http://www.google.com/calendar/ical/#{calendar_id(calendar_name)}/public/basic.ics"
+  end
+  
+  def gcal_feed_url(calendar_name)
+    calendar_id = calendar_id(calendar_name)
+    calendar_private?(calendar_name) ? 
+      "https://www.google.com/calendar/feeds/#{calendar_id}/private-#{private_key(calendar_name)}/basic" :
+      "http://www.google.com/calendar/feeds/#{calendar_id}/public/basic"
   end
   
   alias_method :h, :escape_html
@@ -51,16 +75,45 @@ end
 # TODO: Add caching support
 
 get '/' do
-  # TODO: Tidy, separate out, error handling support
-  ical_string = Net::HTTP.get URI.parse(gcal_url)
-  components = RiCal.parse_string ical_string
-  @calendar = components.first
-  @calendar_name = @calendar.x_properties['X-WR-CALNAME'].first.value
-  @today = to_timezone_date(DateTime.now)
-  occurrences = @calendar.events.map do |e|
-    e.occurrences(:starting => @today, :before => @today + options.lookahead)
+  all_cals = options.calendars.keys 
+  limit = (params[:count] || 0).to_i
+  days = (params[:days] || options.lookahead).to_i
+  cals = params[:cals] || 'all'
+  cals = cals.split(/,/)
+  if cals.include?('all')
+    cals = all_cals 
+  else
+    cals = cals.delete_if { |cal| !all_cals.include?(cal) }
   end
-  @events = occurrences.flatten.sort { |a,b| a.start_time <=> b.start_time }
+  @today = to_timezone_date(DateTime.now)
+  @calendars = { }
+  @events = [ ]
+  @errors = [ ]
+  s = ''
+  cals.each do |cal|    
+    # TODO: Tidy, separate out, error handling support
+    uri = URI.parse(gcal_url(cal))
+    ical_string = ''
+    begin
+      open(uri.to_s) do |f|
+        ical_string = f.read
+      end
+    rescue
+      @errors << $!
+    end
+    components = RiCal.parse_string ical_string
+    calendar = components.first
+    @calendars[cal] = calendar.x_properties['X-WR-CALNAME'].first.value
+    cal_events = calendar.events.map do |e|
+      e.occurrences(:starting => @today, :before => @today + days)
+    end.flatten
+    cal_events.each do |e|
+      e.comment = cal
+    end
+    @events += cal_events
+  end
+  @events = @events.flatten.sort { |a,b| a.start_time <=> b.start_time }
+  @events.slice!(0, limit) if limit > 0  
   haml :events
 end
 

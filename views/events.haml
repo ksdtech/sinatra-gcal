@@ -1,16 +1,16 @@
 !!! 5
 %html
   %head
-    %title=@calendar_name
+    %title='Calendars'
     %link{ :href => 'stylesheet.css', :rel => 'stylesheet', :type => 'text/css', :media => 'screen', :charset => 'utf-8' }
     %meta{ :name => 'viewport', :content => 'width=620' } 
   %body
     %header
-      %h1=@calendar_name
+      %h1='Calendars'
       %h2 The Next #{options.lookahead} Days
     -for event in @events
       .event{ :class => (to_timezone(event.start_time) === @today ? 'today' : '') }
-        .date
+        .date{ :style => "background-color: #{calendar_color(event.comment.first)}" }
           .month=to_timezone(event.start_time).strftime '%b'
           .day=to_timezone(event.start_time).strftime '%d'
         .details
@@ -24,10 +24,13 @@
             %dt When
             %dd=format_time_range(event.start_time, event.finish_time)
     %footer
+      =@errors.join(" ")
       .subscribe
-        %a{ :href => gcal_url }
-          Download (iCal)
-        %a{ :href => gcal_feed_url }
-          Subscribe to Feed
+        %ul
+          -@calendars.each do |cal, calendar_name|
+            %li
+              ="#{calendar_name}: "
+              %a{ :href => gcal_url(cal) } Download (iCal)
+              %a{ :href => gcal_feed_url(cal) } Subscribe
       .fork
         Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.

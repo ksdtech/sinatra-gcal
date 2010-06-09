@@ -1,3 +1,8 @@
-gcal: 61s2re9bfk01abmla4d17tojuo@group.calendar.google.com
+calendars:
+  calendar_name:
+    color: '#00ff00'
+    calendar_id: calendarid@group.calendar.google.com
+    private_key: 
+default_color: '#efefef'
 lookahead: 30 # days
 timezone: Pacific/Auckland
