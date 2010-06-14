@@ -1,16 +1,16 @@
 !!! 5
 %html
   %head
-    %title='Calendars'
+    %title='Calendar Events'
     %link{ :href => 'stylesheet.css', :rel => 'stylesheet', :type => 'text/css', :media => 'screen', :charset => 'utf-8' }
     %meta{ :name => 'viewport', :content => 'width=620' } 
   %body
     %header
-      %h1='Calendars'
-      %h2 The Next #{options.lookahead} Days
+      %h1='Calendar Events'
+      %h2 The Next #{@days} Days
     -for event in @events
       .event{ :class => (to_timezone(event.start_time) === @today ? 'today' : '') }
-        .date{ :style => "background-color: #{calendar_color(event.comment.first)}" }
+        .date{ :style => "background-color: #{calendar_color(event.calendar_name)}" }
           .month=to_timezone(event.start_time).strftime '%b'
           .day=to_timezone(event.start_time).strftime '%d'
         .details

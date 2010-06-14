@@ -1,5 +1,6 @@
 source "http://rubygems.org"
 gem "sinatra"
+gem "memcache-client"
 gem "haml"
 gem "tzinfo"
 gem "ri_cal"
