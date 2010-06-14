@@ -14,15 +14,15 @@
           .month=to_timezone(event.start_time).strftime '%b'
           .day=to_timezone(event.start_time).strftime '%d'
         .details
-          %h3=h event.summary
+          %h3= event.summary
           -if !event.description.empty?
-            .description=h event.description
+            .description= event.description
           %dl
             -if !event.location.empty?
               %dt Where
-              %dd=h event.location
+              %dd= event.location
             %dt When
-            %dd=format_time_range(event.start_time, event.finish_time)
+            %dd=format_time_range(event.start_time, event.finish_time, event.all_day)
     %footer
       =@errors.join(" ")
       .subscribe
@@ -30,7 +30,7 @@
           -@calendars.each do |cal, calendar_name|
             %li
               ="#{calendar_name}: "
-              %a{ :href => gcal_url(cal) } Download (iCal)
+              %a{ :href => gcal_ical_url(cal) } Download (iCal)
               %a{ :href => gcal_feed_url(cal) } Subscribe
       .fork
         Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.

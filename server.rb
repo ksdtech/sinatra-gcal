@@ -12,7 +12,7 @@ require 'tzinfo'
 require 'net/https'
 require 'open-uri'
 require 'uri'
-require 'ri_cal'
+require 'nokogiri'
 require 'yaml'
 
 # TODO: tag for #parented, #pta (meeting and special events, except parented)
@@ -41,10 +41,19 @@ helpers do
     LOGGER
   end
   
-  def format_time_range(start_time, end_time)
+  def simple_format(text)
+    text.
+      gsub(/\r\n?/, "\n").
+      gsub(/\n\n+/, "\n\n").
+      gsub(/([^\n]\n)(?=[^\n])/, '<p>\1</p>')
+  end
+  
+  def format_time_range(start_time, end_time, all_day)
+    date_part = to_timezone(start_time).strftime('%d %b %Y')
+    return date_part if all_day
     output = format_time(start_time)
     output << " &mdash; #{format_time(end_time)}" unless end_time.nil?
-    output << ", #{to_timezone(start_time).strftime('%d %b %Y')}"
+    output << ", #{date_part}"
   end
   
   def format_time(datetime)
@@ -52,11 +61,13 @@ helpers do
   end
   
   def to_timezone(datetime)
+    return datetime unless datetime.is_a?(DateTime)
     options.timezone.utc_to_local(datetime.new_offset(0))
   end
   
   def to_timezone_date(datetime)
-    current = to_timezone(datetime)
+    return datetime unless datetime.is_a?(DateTime)
+    current = options.timezone.utc_to_local(datetime.new_offset(0))
     Date.new(current.year, current.month, current.day)
   end
   
@@ -76,49 +87,55 @@ helpers do
     options.calendars[calendar_name]['color'] rescue options.default_color
   end
   
-  def gcal_url(calendar_name)
+  def gcal_embed_url(calendar_name)
+    calendar_id = calendar_id(calendar_name)
+    "http://www.google.com/calendar/hosted/kentfieldschools.org/embed?src=#{calendar_id}"
+  end
+
+  def gcal_ical_url(calendar_name)
     calendar_id = calendar_id(calendar_name)
     calendar_private?(calendar_name) ?
       "https://www.google.com/calendar/ical/#{calendar_id}/private-#{private_key(calendar_name)}/basic.ics" :
       "http://www.google.com/calendar/ical/#{calendar_id(calendar_name)}/public/basic.ics"
   end
   
-  def gcal_feed_url(calendar_name)
+  def gcal_feed_url(calendar_name, full=false)
     calendar_id = calendar_id(calendar_name)
+    feed_name = full ? 'full' : 'basic'
     calendar_private?(calendar_name) ? 
-      "https://www.google.com/calendar/feeds/#{calendar_id}/private-#{private_key(calendar_name)}/basic" :
-      "http://www.google.com/calendar/feeds/#{calendar_id}/public/basic"
-  end
-
-  def gcal_embed_url(calendar_name)
-    calendar_id = calendar_id(calendar_name)
-    "http://www.google.com/calendar/hosted/kentfieldschools.org/embed?src=#{calendar_id}"
+      "https://www.google.com/calendar/feeds/#{calendar_id}/private-#{private_key(calendar_name)}/#{feed_name}" :
+      "http://www.google.com/calendar/feeds/#{calendar_id}/public/#{feed_name}"
   end
 
   # Caching support
-  # Fetching the ical feed, parsing and sorting takes time
   # Convert the events into OpenStructs and put them into memcache
-  def load_calendar(calendar_name)
-    uri = URI.parse(gcal_url(calendar_name))
-    ical_string = ''
-    open(uri.to_s) do |f|
-      ical_string = f.read
+  def load_calendar_from_feed(calendar_name)
+    start_max = @today + options.lookahead
+    url = gcal_feed_url(calendar_name, true)
+    url += "?sortorder=ascending&orderby=starttype&singleevents=true&futureevents=true"
+    url += "&start-max=#{start_max.strftime('%Y-%m-%d')}T23:59:00Z"
+    xml_string = ''
+    open(url) do |f|
+      xml_string = f.read
     end
-    calendar = RiCal.parse_string(ical_string).first
-    title = calendar.x_properties['X-WR-CALNAME'].first.value
-    occurrences = calendar.events.map do |e|
-      e.occurrences(:starting => @today, :before => @today + options.lookahead)
-    end.flatten.sort { |a,b| a.start_time <=> b.start_time }
-    event_structs = occurrences.map do |e|
+    calendar = Nokogiri::XML.parse(xml_string)
+    title = calendar.at_xpath('//xmlns:feed/xmlns:title').content
+    event_structs = calendar.xpath('//xmlns:feed/xmlns:entry').map do |entry|
+      desc = entry.at_xpath('xmlns:content').content
+      gd_when = entry.at_xpath('gd:when') 
+      gd_start = gd_when.attr('startTime')
+      gd_end = gd_when.attr('endTime')
+      all_day = !gd_start.match(/T\d\d:\d\d/)
       OpenStruct.new(
-        :uid => e.uid,
-        :url => e.url,
-        :summary => e.summary,
-        :description => e.description,
-        :tags => e.description.scan(/\#\w+/).map { |t| t[1,t.length-1] },
-        :start_time => e.start_time,
-        :finish_time => e.finish_time,
-        :location => e.location,
+        :uid => entry.at_xpath('gCal:uid').attr('value'),
+        :url => entry.at_xpath("xmlns:link[@type='text/html']").attr('href'),
+        :summary => entry.at_xpath('xmlns:title').content,
+        :description => desc,
+        :tags => desc.scan(/\#\w+/).map { |t| t[1,t.length-1] },
+        :location => entry.at_xpath('gd:where').attr('valueString'),
+        :all_day => all_day,
+        :start_time => all_day ? Date.parse(gd_start) : DateTime.parse(gd_start),
+        :finish_time => all_day ? nil : DateTime.parse(gd_end),
         :calendar_name => calendar_name)
     end
     { :title => title, :events => event_structs }
@@ -128,7 +145,7 @@ helpers do
     data = cache.get(calendar_name)
     if refresh || data.nil?
       logger.info("cache miss")
-      data = load_calendar(calendar_name)
+      data = load_calendar_from_feed(calendar_name)
       cache.set(calendar_name, data)
     else
       logger.info("cache hit")
