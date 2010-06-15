@@ -48,12 +48,38 @@ helpers do
       gsub(/([^\n]\n)(?=[^\n])/, '<p>\1</p>')
   end
   
-  def format_time_range(start_time, end_time, all_day)
-    date_part = to_timezone(start_time).strftime('%d %b %Y')
-    return date_part if all_day
-    output = format_time(start_time)
-    output << " &mdash; #{format_time(end_time)}" unless end_time.nil?
-    output << ", #{date_part}"
+  def format_details(location, description)
+    lines = [ ]
+    lines << "Location: #{location}" unless location.empty?
+    lines << description unless description.empty?
+    return "No details available" if lines.empty?
+    lines.join("<br/>")
+  end
+  
+  def format_day(date_string, today)
+    tomorrow = today + 1
+    date = Date.parse(date_string)
+    case date
+    when today
+      return 'Today'
+    when tomorrow
+      return 'Tomorrow'
+    else
+      return date.strftime('%B %d, %Y')
+    end
+  end
+  
+  def format_time_range(start_time, end_time, all_day, show_date=true)
+    output = ''
+    if !all_day
+      output = format_time(start_time)
+      output << " &mdash; #{format_time(end_time)}" unless end_time.nil?
+    end
+    if show_date
+      date_part = to_timezone(start_time).strftime('%d %b %Y')
+      output << ", #{date_part}"
+    end
+    output
   end
   
   def format_time(datetime)
@@ -121,7 +147,9 @@ helpers do
     calendar = Nokogiri::XML.parse(xml_string)
     title = calendar.at_xpath('//xmlns:feed/xmlns:title').content
     event_structs = calendar.xpath('//xmlns:feed/xmlns:entry').map do |entry|
+      title = entry.at_xpath('xmlns:title').content
       desc = entry.at_xpath('xmlns:content').content
+      desc = '' if desc == '<p>&nbsp;</p>'
       gd_when = entry.at_xpath('gd:when') 
       gd_start = gd_when.attr('startTime')
       gd_end = gd_when.attr('endTime')
@@ -129,7 +157,7 @@ helpers do
       OpenStruct.new(
         :uid => entry.at_xpath('gCal:uid').attr('value'),
         :url => entry.at_xpath("xmlns:link[@type='text/html']").attr('href'),
-        :summary => entry.at_xpath('xmlns:title').content,
+        :summary => title,
         :description => desc,
         :tags => desc.scan(/\#\w+/).map { |t| t[1,t.length-1] },
         :location => entry.at_xpath('gd:where').attr('valueString'),
@@ -165,7 +193,7 @@ end
 
 get '/' do
   all_cals = options.calendars.keys 
-  @days = (params[:days] || options.lookahead).to_i
+  days = (params[:days] || options.lookahead).to_i
   limit = (params[:limit] || 0).to_i
   refresh = params[:refresh]
   template_name = (params[:style] || 'days').to_sym
@@ -183,7 +211,7 @@ get '/' do
   cal_data = nil
   cals.each do |cal|    
     # TODO: Tidy, separate out, error handling support
-    cal_data = fetch_calendar(cal, @days, limit, refresh)
+    cal_data = fetch_calendar(cal, days, limit, refresh)
     @calendars[cal] = cal_data[:title]
     @events += cal_data[:events]
   end
@@ -198,15 +226,20 @@ get '/' do
   if template_name == :days
     @days = { }
     @events.each do |e|
-      d = to_timezone_date(e.start_time)
-      day_key = d.strftime('%Y%m%d:%B %d, %Y')
-      (@days[day_key] ||= [ ]) << e
+      day = to_timezone_date(e.start_time)
+      (@days[day.strftime('%Y-%m-%d')] ||= [ ]) << e
     end
   end
   haml template_name
+end
+
+get '/simple.css' do
+  content_type 'text/css'
+  sass :simple
 end
 
 get '/stylesheet.css' do
   content_type 'text/css'
   sass :stylesheet
 end
+
