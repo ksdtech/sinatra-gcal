@@ -10,7 +10,6 @@ require 'haml'
 require 'sass'
 require 'tzinfo'
 require 'net/https'
-require 'open-uri'
 require 'uri'
 require 'nokogiri'
 require 'yaml'
@@ -50,8 +49,8 @@ helpers do
   
   def format_details(location, description)
     lines = [ ]
-    lines << "Location: #{location}" unless location.empty?
-    lines << description unless description.empty?
+    lines << "Location: #{location}" unless location.nil? || location.empty?
+    lines << description unless description.nil? || description.empty?
     return "No details available" if lines.empty?
     lines.join("<br/>")
   end
@@ -137,13 +136,24 @@ helpers do
   # Convert the events into OpenStructs and put them into memcache
   def load_calendar_from_feed(calendar_name)
     start_max = @today + options.lookahead
-    url = gcal_feed_url(calendar_name, true)
-    url += "?sortorder=ascending&orderby=starttype&singleevents=true&futureevents=true"
-    url += "&start-max=#{start_max.strftime('%Y-%m-%d')}T23:59:00Z"
-    xml_string = ''
-    open(url) do |f|
-      xml_string = f.read
-    end
+    url_s = gcal_feed_url(calendar_name, true)
+    query_s = "?sortorder=ascending&orderby=starttype&singleevents=true&futureevents=true"
+    query_s += "&start-max=#{start_max.strftime('%Y-%m-%d')}T23:59:00Z"
+
+    # No support for ssl_verify_mode?
+    # open(url_s, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE) do |f|
+    #   xml_string = f.read
+    # end
+
+    url = URI.parse(url_s)
+    http = Net::HTTP.new(url.host, url.port)
+    http.use_ssl = url.scheme == 'https'
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    req = Net::HTTP::Get.new(url.path + query_s)
+    res = http.start { |h| h.request(req) }
+    xml_string = res.body
+
     calendar = Nokogiri::XML.parse(xml_string)
     title = calendar.at_xpath('//xmlns:feed/xmlns:title').content
     event_structs = calendar.xpath('//xmlns:feed/xmlns:entry').map do |entry|
