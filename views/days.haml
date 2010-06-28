@@ -1,40 +1,21 @@
-!!! 5
-%html
-  %head
-    %title='Calendar Events'
-    %link{ :href => 'simple.css', :rel => 'stylesheet', :type => 'text/css', :media => 'screen', :charset => 'utf-8' }
-    
-  %body
-    %header
-      %h1='Calendar Events'
-    -for day in @days.keys.sort
-      .day=format_day(day, @today)
-      -for event in @days[day]
-        .event
-          %span{:class => 'time'}
-            =format_time_range(event.start_time, event.finish_time, event.all_day, false)
-          %span{:class => 'title'}
-            %a{:href => "javascript:toggle_details('#{event.uid}')"}=event.summary
-          %div{:class => 'details', :id => event.uid}
-            =format_details(event.location, event.description)
-            %br
-            %a{:href => event.url} More information
-    %footer
-      =@errors.join(" ")
-      .subscribe
-        %ul
-          -@calendars.each do |cal, calendar_name|
-            %li
-              ="#{calendar_name}: "
-              %a{ :href => gcal_ical_url(cal) } Download (iCal)
-              %a{ :href => gcal_feed_url(cal) } Subscribe
-      .fork
-        Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
-    :javascript
-      function toggle_details(uid) {
-        el = document.getElementById(uid);
-        if (el.style.display == 'none')
-          el.style.display = 'block';
-        else
-          el.style.display = 'none';
-      }
+%div{:class => @container_class}
+  -for day in @days.keys.sort
+    %div{:class => @day_class}=format_day(day, @today)
+    -for event in @days[day]
+      %div{:class => @event_class}
+        %span{:class => @time_class}
+          =format_time_range(event.start_time, event.finish_time, event.all_day, false)
+        %span{:class => @title_class}
+          %a{:href => "javascript:toggle_details('#{event.uid}')"}=event.summary
+        %div{:class => 'details', :id => event.uid, :style => "display: none;"}
+          =format_details(event.location, event.description)
+          %br
+          %a{:href => event.url} More information
+:javascript
+  function toggle_details(uid) {
+    el = document.getElementById(uid);
+    if (el.style.display == 'none')
+      el.style.display = 'block';
+    else
+      el.style.display = 'none';
+  }

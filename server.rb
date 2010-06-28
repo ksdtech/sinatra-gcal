@@ -82,7 +82,7 @@ helpers do
   end
   
   def format_time(datetime)
-    to_timezone(datetime).strftime('%I:%M%p')
+    to_timezone(datetime).strftime('%I:%M %p').gsub(/^0/, '')
   end
   
   def to_timezone(datetime)
@@ -206,7 +206,32 @@ get '/' do
   days = (params[:days] || options.lookahead).to_i
   limit = (params[:limit] || 0).to_i
   refresh = params[:refresh]
-  template_name = (params[:style] || 'days').to_sym
+  use_layout = (params[:layout] || 'f') == 't'
+  template_name = (params[:format] || 'days').to_sym
+  case template_name
+  when :embed
+    use_layout = true
+  when :days
+    # pass
+  when :events
+    # pass
+  else
+    raise RuntimeError, "invalid style"
+  end
+  css_style = (params[:style] || 'sw')
+  if css_style == 'sw'
+    @container_class = 'SW-Calendar-Block-Container'
+    @day_class   = 'SW-Calendar-Block-Date'
+    @event_class = 'SW-Calendar-Block-Event-Container'
+    @time_class  = 'SW-Calendar-Block-Time'
+    @title_class = 'SW-Calendar-Block-Title'
+  else
+    @container_class = 'contents'
+    @day_class   = 'day'
+    @event_class = 'event'
+    @time_class  = 'time'
+    @title_class = 'title'
+  end
   tags = (params[:tags] || '').split(/,/)
   cals = (params[:cals] || 'all').split(/,/)
   if cals.include?('all')
@@ -240,7 +265,8 @@ get '/' do
       (@days[day.strftime('%Y-%m-%d')] ||= [ ]) << e
     end
   end
-  haml template_name
+  layout_opts = use_layout ? { } : { :layout => false }
+  haml template_name, layout_opts
 end
 
 get '/simple.css' do
