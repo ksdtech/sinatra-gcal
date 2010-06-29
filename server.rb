@@ -26,7 +26,9 @@ configure do
   set :default_color, config['default_color']
   set :calendars, config['calendars']
   set :lookahead, config['lookahead']
+  set :tzname, config['timezone']
   set :timezone, TZInfo::Timezone.get(config['timezone'])
+  set :apps_domain, config['apps_domain']
   CACHE = MemCache.new('localhost:11211', :namespace => 'sinatra-gcal')
   LOGGER = Logger.new("sinatra.log")
 end
@@ -109,14 +111,19 @@ helpers do
   end
 
   def calendar_color(calendar_name)
-    options.calendars[calendar_name]['color'] rescue options.default_color
+    color = options.calendars[calendar_name]['color'] rescue options.default_color
+    color.upcase
   end
   
-  def gcal_embed_url(calendar_name)
-    calendar_id = calendar_id(calendar_name)
-    "http://www.google.com/calendar/hosted/kentfieldschools.org/embed?src=#{calendar_id}"
+  def gcal_embed_url(cals)
+    url = "http://www.google.com/calendar/hosted/#{options.apps_domain}/embed?showTitle=0&showTz=0&height=600&wkst=1&bgcolor=#FFFFFF"
+    cals.each do |cal|
+      url << "&src=#{calendar_id(cal)}&color=#{calendar_color(cal)}"
+    end
+    url << "&ctz=#{options.tzname}"
+    url
   end
-
+  
   def gcal_ical_url(calendar_name)
     calendar_id = calendar_id(calendar_name)
     calendar_private?(calendar_name) ?
@@ -157,7 +164,7 @@ helpers do
     calendar = Nokogiri::XML.parse(xml_string)
     title = calendar.at_xpath('//xmlns:feed/xmlns:title').content
     event_structs = calendar.xpath('//xmlns:feed/xmlns:entry').map do |entry|
-      title = entry.at_xpath('xmlns:title').content
+      summ = entry.at_xpath('xmlns:title').content
       desc = entry.at_xpath('xmlns:content').content
       desc = '' if desc == '<p>&nbsp;</p>'
       gd_when = entry.at_xpath('gd:when') 
@@ -167,7 +174,7 @@ helpers do
       OpenStruct.new(
         :uid => entry.at_xpath('gCal:uid').attr('value'),
         :url => entry.at_xpath("xmlns:link[@type='text/html']").attr('href'),
-        :summary => title,
+        :summary => summ,
         :description => desc,
         :tags => desc.scan(/\#\w+/).map { |t| t[1,t.length-1] },
         :location => entry.at_xpath('gd:where').attr('valueString'),
@@ -179,7 +186,7 @@ helpers do
     { :title => title, :events => event_structs }
   end
   
-  def fetch_calendar(calendar_name, days=0, limit=0, refresh=false)
+  def fetch_calendar(calendar_name, days=0, limit=0, tags=[], refresh=false)
     data = cache.get(calendar_name)
     if refresh || data.nil?
       logger.info("cache miss")
@@ -188,24 +195,43 @@ helpers do
     else
       logger.info("cache hit")
     end
-    # TODO: handle days and limit arguments
+    # TODO: handle days, limit, tags arguments
     data
+  end
+  
+  def embed_escape(s)
+    escape_html(s).gsub(/\#/, '%23').gsub(/\@/, '%40')
   end
 
   alias_method :h, :escape_html
 end
 
-get '/embed' do
-  cal = params[:cal]
-  @embed_src = gcal_embed_url(cal)
-  haml :embed
+get '/calendar' do
+  @today = to_timezone_date(DateTime.now)
+  @errors = [ ]
+  refresh = params[:refresh]
+  all_cals = options.calendars.keys 
+  cals = (params[:cals] || 'all').split(/,/)
+  if cals.include?('all')
+    cals = all_cals 
+  else
+    cals = cals.delete_if { |cal| !all_cals.include?(cal) }
+  end
+  @calendars = { }
+  cals.each do |cal| 
+    cal_data = fetch_calendar(cal, 0, 1, [], refresh)
+    @calendars[cal_data[:title]] = cal
+  end
+  @embed_src = gcal_embed_url(cals)
+  haml :calendar
 end
 
 get '/' do
-  all_cals = options.calendars.keys 
+  @today = to_timezone_date(DateTime.now)
+  @errors = [ ]
+  refresh = params[:refresh]
   days = (params[:days] || options.lookahead).to_i
   limit = (params[:limit] || 0).to_i
-  refresh = params[:refresh]
   use_layout = (params[:layout] || 'f') == 't'
   template_name = (params[:format] || 'days').to_sym
   case template_name
@@ -232,22 +258,22 @@ get '/' do
     @time_class  = 'time'
     @title_class = 'title'
   end
+  @calendars = { }
+  @events = [ ]
+  
+  # TODO: filter on tags
   tags = (params[:tags] || '').split(/,/)
+  all_cals = options.calendars.keys 
   cals = (params[:cals] || 'all').split(/,/)
   if cals.include?('all')
     cals = all_cals 
   else
     cals = cals.delete_if { |cal| !all_cals.include?(cal) }
   end
-  @today = to_timezone_date(DateTime.now)
-  @calendars = { }
-  @events = [ ]
-  @errors = [ ]
-  cal_data = nil
   cals.each do |cal|    
     # TODO: Tidy, separate out, error handling support
-    cal_data = fetch_calendar(cal, days, limit, refresh)
-    @calendars[cal] = cal_data[:title]
+    cal_data = fetch_calendar(cal, days, limit, tags, refresh)
+    @calendars[cal_data[:title]] = cal
     @events += cal_data[:events]
   end
   

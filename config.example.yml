@@ -6,3 +6,4 @@ calendars:
 default_color: '#efefef'
 lookahead: 30 # days
 timezone: Pacific/Auckland
+apps_domain: example.com

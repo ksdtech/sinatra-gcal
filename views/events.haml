@@ -16,14 +16,3 @@
           %dd= event.location
         %dt When
         %dd=format_time_range(event.start_time, event.finish_time, event.all_day)
-%footer
-  =@errors.join(" ")
-  .subscribe
-    %ul
-      -@calendars.each do |cal, calendar_name|
-        %li
-          ="#{calendar_name}: "
-          %a{ :href => gcal_ical_url(cal) } Download (iCal)
-          %a{ :href => gcal_feed_url(cal) } Subscribe
-  .fork
-    Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
