@@ -10,11 +10,11 @@
       =@errors.join(" ")
       .subscribe
         %ul
-          -@calendars.keys.sort.each do |title|
+          -@data[:calendars].keys.sort.each do |title|
             %li
               =h title
-              %a{ :href => gcal_ical_url(@calendars[title]) } Download (iCal)
-              %a{ :href => gcal_feed_url(@calendars[title]) } Subscribe
+              %a{ :href => gcal_ical_url(@data[:calendars][title]) } Download (iCal)
+              %a{ :href => gcal_feed_url(@data[:calendars][title]) } Subscribe
       .fork
         Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
     

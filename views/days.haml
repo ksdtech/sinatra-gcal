@@ -1,16 +1,16 @@
 %div{:class => @container_class}
-  -for day in @days.keys.sort
-    %div{:class => @day_class}=format_day(day, @today)
-    -for event in @days[day]
+  -for day in @data[:days]
+    %div{:class => @day_class}=format_day(day[:date], @today)
+    -for event in day[:events]
       %div{:class => @event_class}
         %span{:class => @time_class}
-          =format_time_range(event.start_time, event.finish_time, event.all_day, false)
+          =format_time_range(event[:start_time], event[:finish_time], event[:all_day], false)
         %span{:class => @title_class}
-          %a{:href => "javascript:toggle_details('#{event.uid}')"}=event.summary
-        %div{:class => 'details', :id => event.uid, :style => "display: none;"}
-          =format_details(event.location, event.description)
+          %a{:href => "javascript:toggle_details('#{event[:uid]}')"}=event[:summary]
+        %div{:class => 'details', :id => event[:uid], :style => "display: none;"}
+          =format_details(event[:location], event[:description])
           %br
-          %a{:href => event.url} More information
+          %a{:href => event[:url]} More information
 :javascript
   function toggle_details(uid) {
     el = document.getElementById(uid);

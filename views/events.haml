@@ -1,18 +1,18 @@
 %header
   %h1='Calendar Events'
   %h2 The Next #{@days} Days
--for event in @events
-  .event{ :class => (to_timezone(event.start_time) === @today ? 'today' : '') }
+-for event in @data[:events]
+  .event{ :class => (to_timezone(event[:start_time]) === @today ? 'today' : '') }
     .date{ :style => "background-color: #{calendar_color(event.calendar_name)}" }
-      .month=to_timezone(event.start_time).strftime '%b'
-      .day=to_timezone(event.start_time).strftime '%d'
+      .month=to_timezone(event[:start_time]).strftime '%b'
+      .day=to_timezone(event[:start_time]).strftime '%d'
     .details
-      %h3= event.summary
-      -if !event.description.empty?
-        .description= event.description
+      %h3= event[:summary]
+      -if !event[:description].empty?
+        .description= event[:description]
       %dl
-        -if !event.location.empty?
+        -if !event[:location].empty?
           %dt Where
-          %dd= event.location
+          %dd= event[:location]
         %dt When
-        %dd=format_time_range(event.start_time, event.finish_time, event.all_day)
+        %dd=format_time_range(event[:start_time], event[:finish_time], event[:all_day])
