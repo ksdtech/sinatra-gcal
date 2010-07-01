@@ -7,10 +7,9 @@
           =format_time_range(event[:start_time], event[:finish_time], event[:all_day], false)
         %span{:class => @title_class}
           %a{:href => "javascript:toggle_details('#{event[:uid]}')"}=event[:summary]
-        %div{:class => 'details', :id => event[:uid], :style => "display: none;"}
+        %div{:class => 'details', :id => event[:uid], :style => "width: 400px; border:1px solid black; padding: 4px; margin: 2px; display: none;"}
           =format_details(event[:location], event[:description])
-          %br
-          %a{:href => event[:url]} More information
+
 :javascript
   function toggle_details(uid) {
     el = document.getElementById(uid);

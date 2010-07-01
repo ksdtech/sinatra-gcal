@@ -1,0 +1,15 @@
+%h1= @event[:summary]
+%dl
+  %dt When
+  %dd
+    %p= @event[:display_time]
+  %dt Where
+  %dd
+    %p= @event[:location] || "No location information available"
+  %dt Information
+  %dd
+    %p= @event[:description] || "No details available"
+%p
+  %a{:href => '/calendar'} View Calendar
+
+  

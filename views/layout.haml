@@ -1,7 +1,7 @@
 !!! 5
 %html
   %head
-    %title='Calendar Events'
+    %title= options.site_title
     %link{:href => 'simple.css', :rel => 'stylesheet', :type => 'text/css', :media => 'screen', :charset => 'utf-8'}
     
   %body
@@ -9,12 +9,13 @@
     %footer
       =@errors.join(" ")
       .subscribe
+        Download or subscribe to these calendars:
         %ul
-          -@data[:calendars].keys.sort.each do |title|
+          -@data[:calendars].each do |cal|
             %li
-              =h title
-              %a{ :href => gcal_ical_url(@data[:calendars][title]) } Download (iCal)
-              %a{ :href => gcal_feed_url(@data[:calendars][title]) } Subscribe
+              =h cal[:title]
+              %a{ :href => gcal_ical_url(cal[:name]) } Download (iCal)
+              %a{ :href => gcal_feed_url(cal[:name]) } Subscribe
       .fork
         Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
     

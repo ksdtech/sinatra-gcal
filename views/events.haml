@@ -1,5 +1,5 @@
 %header
-  %h1='Calendar Events'
+  %h1= options.site_title
   %h2 The Next #{@days} Days
 -for event in @data[:events]
   .event{ :class => (to_timezone(event[:start_time]) === @today ? 'today' : '') }
@@ -8,11 +8,11 @@
       .day=to_timezone(event[:start_time]).strftime '%d'
     .details
       %h3= event[:summary]
-      -if !event[:description].empty?
+      -if !event[:description].nil?
         .description= event[:description]
       %dl
-        -if !event[:location].empty?
-          %dt Where
-          %dd= event[:location]
         %dt When
         %dd=format_time_range(event[:start_time], event[:finish_time], event[:all_day])
+        -if !event[:location].nil?
+          %dt Where
+          %dd= event[:location]

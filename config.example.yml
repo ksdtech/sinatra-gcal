@@ -1,9 +1,10 @@
 calendars:
   calendar_name:
-    color: '#00ff00'
+    color: '#2952A3'
     calendar_id: calendarid@group.calendar.google.com
     private_key: 
-default_color: '#efefef'
+default_color: '#5A6986'
 lookahead: 30 # days
 timezone: Pacific/Auckland
 apps_domain: example.com
+site_title: Google Calendars

@@ -29,6 +29,7 @@ configure do
   set :tzname, config['timezone']
   set :timezone, TZInfo::Timezone.get(config['timezone'])
   set :apps_domain, config['apps_domain']
+  set :site_title, config['site_title']
   CACHE = MemCache.new('localhost:11211', :namespace => 'sinatra-gcal')
   LOGGER = Logger.new("sinatra.log")
 end
@@ -51,8 +52,8 @@ helpers do
   
   def format_details(location, description)
     lines = [ ]
-    lines << "Location: #{location}" unless location.nil? || location.empty?
-    lines << description unless description.nil? || description.empty?
+    lines << "Location: #{location}" unless location.nil?
+    lines << description unless description.nil?
     return "No details available" if lines.empty?
     lines.join("<br/>")
   end
@@ -166,7 +167,10 @@ helpers do
     events = calendar.xpath('//xmlns:feed/xmlns:entry').map do |entry|
       summ = entry.at_xpath('xmlns:title').content
       desc = entry.at_xpath('xmlns:content').content
-      desc = '' if desc == '<p>&nbsp;</p>'
+      desc = nil if desc.empty? || desc == '<p>&nbsp;</p>'
+      tags = desc.nil? ? [] : desc.scan(/\#\w+/).map { |t| t[1,t.length-1] }
+      location = entry.at_xpath('gd:where').attr('valueString')
+      location = nil if !location.nil? && location.empty?
       gd_when = entry.at_xpath('gd:when') 
       gd_start = gd_when.attr('startTime')
       gd_end = gd_when.attr('endTime')
@@ -174,21 +178,23 @@ helpers do
       start_time = all_day ? Date.parse(gd_start) : DateTime.parse(gd_start)
       finish_time = all_day ? nil : DateTime.parse(gd_end)
       display_time = format_time_range(start_time, finish_time, all_day, true)
+      uid = entry.at_xpath('gCal:uid').attr('value')
       {
-        :uid => entry.at_xpath('gCal:uid').attr('value'),
+        :uid => uid,
         :url => entry.at_xpath("xmlns:link[@type='text/html']").attr('href'),
-        :summary => summ,
+        :summary     => summ,
         :description => desc,
-        :tags => desc.scan(/\#\w+/).map { |t| t[1,t.length-1] },
-        :location => entry.at_xpath('gd:where').attr('valueString'),
-        :all_day => all_day,
-        :start_time => start_time,
+        :location    => location,
+        :tags        => tags,
+        :all_day     => all_day,
+        :start_time  => start_time,
         :finish_time => finish_time,
-        :display_time => display_time,
+        :display_time  => display_time,
         :calendar_name => calendar_name
       }
     end
-    { :title => title, :events => events }
+    uids = events.inject({}) { |h, e| h[e[:uid]] = e; h }
+    { :title => title, :events => events, :uids => uids }
   end
   
   def fetch_calendar(calendar_name, today, days=0, limit=0, tags=[], refresh=false)
@@ -209,8 +215,9 @@ helpers do
   end
   
   def get_data(cals, today, days, limit, tags, refresh, return_days=false)
-    calendars = { }
+    calendars = [ ]
     events = [ ]
+    uids = { }
 
     # TODO: filter on tags
     all_cals = options.calendars.keys 
@@ -219,12 +226,14 @@ helpers do
     else
       cals = cals.delete_if { |cal| !all_cals.include?(cal) }
     end
+    
     cals.each do |cal|    
       # TODO: Tidy, separate out, error handling support
       cal_data = fetch_calendar(cal, today, days, limit, tags, refresh)
-      calendars[cal_data[:title]] = cal
       events += cal_data[:events]
+      calendars << { :title => cal_data[:title], :name => cal }
     end
+    calendars.sort! { |a, b| a[:title] <=> b[:title] }
 
     events = events.flatten.sort { |a,b| a[:start_time] <=> b[:start_time] }
     events.reject! { |e| (to_timezone(e[:start_time]) <=> today) < 0 }
@@ -251,44 +260,16 @@ helpers do
   alias_method :h, :escape_html
 end
 
+# Routes
+
+# Jsonp testing
 get '/test' do
   haml :test, :layout => false
 end
 
-get '/calendar' do
-  @today = to_timezone_date(DateTime.now)
-  @errors = [ ]
-  refresh = params[:refresh]
-  all_cals = options.calendars.keys 
-  cals = (params[:cals] || 'all').split(/,/)
-  if cals.include?('all')
-    cals = all_cals 
-  else
-    cals = cals.delete_if { |cal| !all_cals.include?(cal) }
-  end
-  @calendars = { }
-  cals.each do |cal| 
-    cal_data = fetch_calendar(cal, @today, 0, 1, [], refresh)
-    @calendars[cal_data[:title]] = cal
-  end
-  @embed_src = gcal_embed_url(cals)
-  haml :calendar
-end
-
-get '/jsonp' do
-  @today = to_timezone_date(DateTime.now)
-  cals = (params[:cals] || 'all').split(/,/)
-  days = (params[:days] || options.lookahead).to_i
-  limit = (params[:limit] || 0).to_i
-  tags = (params[:tags] || '').split(/,/)
-  refresh = params[:refresh]
-
-  data = get_data(cals, @today, days, limit, tags, refresh, true)
-  callback = params[:callback] || 'gcalCallback'
-  content_type :js
-  "#{callback}(#{data.to_json})"
-end
-
+# Return webpage with upcoming events list 
+# format=days (default) - list events grouped by day
+# format=events - list events without day grouping
 get '/' do
   @today = to_timezone_date(DateTime.now)
   @errors = [ ]
@@ -301,8 +282,6 @@ get '/' do
   use_layout = (params[:layout] || 'f') == 't'
   template_name = (params[:format] || 'days').to_sym
   case template_name
-  when :embed
-    use_layout = true
   when :days
     # pass
   when :events
@@ -327,6 +306,62 @@ get '/' do
   @data = get_data(cals, @today, days, limit, tags, refresh, template_name == :days)
   layout_opts = use_layout ? { } : { :layout => false }
   haml template_name, layout_opts
+end
+
+# Return webpage with embedded multiple Google calendars
+get '/calendar' do
+  @today = to_timezone_date(DateTime.now)
+  @errors = [ ]
+  refresh = params[:refresh]
+  all_cals = options.calendars.keys 
+  cals = (params[:cals] || 'all').split(/,/)
+  if cals.include?('all')
+    cals = all_cals 
+  else
+    cals = cals.delete_if { |cal| !all_cals.include?(cal) }
+  end
+  @embed_src = gcal_embed_url(cals)
+
+  calendars = [ ]
+  cals.each do |cal| 
+    cal_data = fetch_calendar(cal, @today, 0, 1, [], refresh)
+    calendars << { :title => cal_data[:title], :name => cal }
+  end
+  calendars.sort! { |a, b| a[:title] <=> b[:title] }
+  @data = { :calendars => calendars }
+  haml :calendar
+end
+
+# Return event details
+get '/events/:uid' do
+  @uid = params[:uid]
+  refresh = params[:refresh]
+  @today = to_timezone_date(DateTime.now)
+  @errors = [ ]
+  calendars = [ ]
+  options.calendars.keys.each do |cal|
+    cal_data = fetch_calendar(cal, @today, options.lookahead, 0, [], refresh)
+    calendars << { :title => cal_data[:title], :name => cal }
+    @event ||= cal_data[:uids][@uid]
+  end
+  calendars.sort! { |a, b| a[:title] <=> b[:title] }
+  @data = { :calendars => calendars }
+  haml @event ? :event : :event_not_found
+end
+
+# Return jsonp callback function with all event data
+get '/jsonp' do
+  @today = to_timezone_date(DateTime.now)
+  cals = (params[:cals] || 'all').split(/,/)
+  days = (params[:days] || options.lookahead).to_i
+  limit = (params[:limit] || 0).to_i
+  tags = (params[:tags] || '').split(/,/)
+  refresh = params[:refresh]
+
+  data = get_data(cals, @today, days, limit, tags, refresh, true)
+  callback = params[:callback] || 'gcalCallback'
+  content_type :js
+  "#{callback}(#{data.to_json})"
 end
 
 get '/simple.css' do
