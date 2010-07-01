@@ -30,6 +30,7 @@ configure do
   set :timezone, TZInfo::Timezone.get(config['timezone'])
   set :apps_domain, config['apps_domain']
   set :site_title, config['site_title']
+  set :base_uri, config['base_uri']
   CACHE = MemCache.new('localhost:11211', :namespace => 'sinatra-gcal')
   LOGGER = Logger.new("sinatra.log")
 end

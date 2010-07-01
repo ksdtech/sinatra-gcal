@@ -2,7 +2,7 @@
 %html
   %head
     %title= options.site_title
-    %link{:href => 'simple.css', :rel => 'stylesheet', :type => 'text/css', :media => 'screen', :charset => 'utf-8'}
+    %link{:href => "#{options.base_uri}/simple.css", :rel => 'stylesheet', :type => 'text/css', :media => 'screen', :charset => 'utf-8'}
     
   %body
     =yield

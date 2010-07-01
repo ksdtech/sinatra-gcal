@@ -8,3 +8,4 @@ lookahead: 30 # days
 timezone: Pacific/Auckland
 apps_domain: example.com
 site_title: Google Calendars
+base_uri: http://example.com/sinatra-gcal
