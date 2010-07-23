@@ -44,6 +44,10 @@ helpers do
     LOGGER
   end
   
+  def debug
+    false
+  end
+  
   def simple_format(text)
     text.
       gsub(/\r\n?/, "\n").
@@ -146,8 +150,10 @@ helpers do
   def load_calendar_from_feed(calendar_name, today)
     start_max = today + options.lookahead
     url_s = gcal_feed_url(calendar_name, true)
-    query_s = "?sortorder=ascending&orderby=starttype&singleevents=true&futureevents=true"
+    query_s = "?sortorder=ascending&orderby=starttime&singleevents=true"
+    query_s += "&start-min=#{today.strftime('%Y-%m-%d')}T00:00:00Z"
     query_s += "&start-max=#{start_max.strftime('%Y-%m-%d')}T23:59:00Z"
+    logger.info("load #{url_s}#{query_s}") if debug
 
     # No support for ssl_verify_mode?
     # open(url_s, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE) do |f|
@@ -201,13 +207,17 @@ helpers do
   def fetch_calendar(calendar_name, today, days=0, limit=0, tags=[], refresh=false)
     data = cache.get(calendar_name)
     if refresh || data.nil?
-      logger.info("cache miss")
+      logger.info("cache miss") if debug
       data = load_calendar_from_feed(calendar_name, today)
       cache.set(calendar_name, data)
     else
-      logger.info("cache hit")
+      logger.info("cache hit") if debug
     end
-    # TODO: handle days, limit, tags arguments
+    if tags && !tags.empty?
+      data[:events] = data[:events].select { |e| !(e[:tags] & tags).empty? }
+    end
+    # TODO: handle days, limit
+      
     data
   end
   
