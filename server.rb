@@ -1,6 +1,17 @@
-require "rubygems"
-require "bundler"
-Bundler.setup
+require 'rubygems'
+
+# Both isolate and bundler both break under passenger and rvm -- not sure why.
+# But passenger's spawn process checks the .bundle files to determine load
+# load paths, so we don't need these setup checks. Instead we create an 
+# .rvmrc configuration file in this directory that specifies the appropriate
+# rvm gemset to use for this application.
+
+# require 'isolate/now'
+# require 'bundler'
+# Bundler.setup
+
+# After modifying source code and the Gemfile, we do:
+# 'bundle check' and 'bundle lock'.
 
 require 'sinatra'
 require 'logger'
@@ -11,8 +22,12 @@ require 'sass'
 require 'tzinfo'
 require 'net/https'
 require 'uri'
-require 'nokogiri'
 require 'yaml'
+
+# This is required to avoid warnings on OS X Server's libxml2 version
+I_KNOW_I_AM_USING_AN_OLD_AND_BUGGY_VERSION_OF_LIBXML2 = true
+require 'nokogiri'
+
 
 # TODO: tag for #parented, #pta (meeting and special events, except parented)
 # TODO: param for styled boxes or flat text (like schoolwires)
