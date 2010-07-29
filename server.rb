@@ -224,7 +224,8 @@ helpers do
     if refresh || data.nil?
       logger.info("cache miss") if debug
       data = load_calendar_from_feed(calendar_name, today)
-      cache.set(calendar_name, data)
+      # store calendar for an hour
+      cache.set(calendar_name, data, 3600)
     else
       logger.info("cache hit") if debug
     end
