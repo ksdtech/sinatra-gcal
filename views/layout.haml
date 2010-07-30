@@ -2,20 +2,21 @@
 %html
   %head
     %title= options.site_title
-    %link{:href => "#{options.base_uri}/simple.css", :rel => 'stylesheet', :type => 'text/css', :media => 'screen', :charset => 'utf-8'}
-    
+    =@font_styles
   %body
     =yield
     %footer
       =@errors.join(" ")
-      .subscribe
-        Download or subscribe to these calendars:
-        %ul
-          -@data[:calendars].each do |cal|
-            %li
-              =h cal[:title]
-              %a{ :href => gcal_ical_url(cal[:name]) } Download (iCal)
-              %a{ :href => gcal_feed_url(cal[:name]) } Subscribe
-      .fork
-        Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
+      -if @show_subscribe
+        .subscribe
+          Download or subscribe to these calendars:
+          %ul
+            -@data[:calendars].each do |cal|
+              %li
+                =h cal[:title]
+                %a{ :href => gcal_ical_url(cal[:name]) } Download (iCal)
+                %a{ :href => gcal_feed_url(cal[:name]) } Subscribe
+      -if @show_credits
+        .fork
+          Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
     

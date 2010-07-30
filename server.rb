@@ -63,6 +63,26 @@ helpers do
     false
   end
   
+  def styles_for_font(font, day_class, event_class)
+    family, size = font.split('-')
+    family ||= 'Arial'
+    family.gsub(/_/, ' ')
+    size ||= '10pt'
+    html = "<style type='text/css'>\n"
+    html << ".#{day_class} {\n"
+    html << " font-family: #{family};\n"
+    html << " font-size: #{size};\n"
+    html << " font-weight: bold;\n"
+    html << "}\n"
+    html << "body, .#{event_class} {\n"
+    html << " font-family: #{family};\n"
+    html << " font-size: #{size};\n"
+    html << " font-weight: normal;\n"
+    html << "}\n"
+    html << "</style>\n"
+    html
+  end
+  
   def simple_format(text)
     text.
       gsub(/\r\n?/, "\n").
@@ -304,13 +324,14 @@ get '/' do
   days = (params[:days] || options.lookahead).to_i
   limit = (params[:limit] || 0).to_i
   tags = (params[:tags] || '').split(/,/)
+  font = (params[:font] || 'Verdana-12pt')
   refresh = params[:refresh]
   
-  use_layout = (params[:layout] || 'f') == 't'
+  use_layout = false
   template_name = (params[:format] || 'days').to_sym
   case template_name
   when :days
-    # pass
+    use_layout = true unless params[:layout] == 'f'
   when :events
     # pass
   else
@@ -331,6 +352,7 @@ get '/' do
     @title_class = 'title'
   end
   @data = get_data(cals, @today, days, limit, tags, refresh, template_name == :days)
+  @font_styles = styles_for_font(font, @day_class, @event_class) if use_layout
   layout_opts = use_layout ? { } : { :layout => false }
   haml template_name, layout_opts
 end
