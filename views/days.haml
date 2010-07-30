@@ -1,6 +1,8 @@
 %div{:class => @container_class}
+  -i = 0
   -for day in @data[:days]
-    %div{:class => @day_class}=format_day(day[:date], @today)
+    %div{:class => @day_class, :id => "day-#{i}"}=format_day(day[:date], @today)
+    -i += 1
     -for event in day[:events]
       %div{:class => @event_class}
         %span{:class => @time_class}
