@@ -73,6 +73,7 @@ helpers do
     html << " font-family: #{family};\n"
     html << " font-size: #{size};\n"
     html << " font-weight: bold;\n"
+    html << " padding-bottom: #{size}\n"
     html << "}\n"
     html << "body, .#{event_class} {\n"
     html << " font-family: #{family};\n"
