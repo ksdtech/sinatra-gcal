@@ -52,4 +52,6 @@ I've implemented a few enhancements for use in our school district.
 * Cache system that uses memcached.
 * Jsonp format for use with client-side Javascript.
 
+See client_side.js for how the calendar json feed is used on our Schoolwires client site.
+
 --Peter Zingg, github.com/ksdtech
