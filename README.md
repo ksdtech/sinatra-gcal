@@ -43,10 +43,13 @@ If you're using Passenger, a `config.ru` like this will do nicely:
 
     run Sinatra::Application
     
+Kentfield Fork Changes
+----------------------
 
-Laundry List
-------------
-Still marked TODO:
+I've implemented a few enhancements for use in our school district.
 
-* Caching support (currently fetches the calendar every time a request is made)
-* Tidy up the request code
+* Support for mulitple calendars, each in a different color.  Calendars are specified in a yaml configuration file read on startup.
+* Cache system that uses memcached.
+* Jsonp format for use with client-side Javascript.
+
+--Peter Zingg, github.com/ksdtech

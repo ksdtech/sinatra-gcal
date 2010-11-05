@@ -194,6 +194,9 @@ helpers do
     query_s += "&start-max=#{start_max.strftime('%Y-%m-%d')}T23:59:00Z"
     logger.info("load #{url_s}#{query_s}") if debug
 
+    # support per-calendar colors
+    color = calendar_color(calendar_name)
+
     # No support for ssl_verify_mode?
     # open(url_s, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE) do |f|
     #   xml_string = f.read
@@ -236,7 +239,8 @@ helpers do
         :start_time  => start_time,
         :finish_time => finish_time,
         :display_time  => display_time,
-        :calendar_name => calendar_name
+        :calendar_name => calendar_name,
+        :color       => color
       }
     end
     uids = events.inject({}) { |h, e| h[e[:uid]] = e; h }
