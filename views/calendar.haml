@@ -1,4 +1,20 @@
 %h1= options.site_title
+%p Scroll to the bottom of this page for subscription information.
 %iframe{:width => "800", :height => "600", 
   :src => embed_escape(@embed_src),
   :style => "border-width: 0", :frameborder => "0", :scrolling => "no"}
+%h4 iCal Subscriptions
+%p 
+  To subscribe to any of these calendars in iCal, first copy the calendar's
+  feed URL from the list below to the clipboard, then select  
+  %strong Subscribe...
+  from iCal's Calendar menu, and paste the URL into the 
+  %strong Calendar URL
+  text box.
+%dl
+  %dt District Calendar Feed
+  %dd= gcal_ical_url('district_public')
+  %dt Bacich Calendar Feed
+  %dd= gcal_ical_url('bacich_public')
+  %dt Kent Calendar Feed
+  %dd= gcal_ical_url('kent_public')

@@ -4,19 +4,11 @@
     %title= options.site_title
     =@font_styles
   %body
-    =yield
-    %footer
-      =@errors.join(" ")
-      -if @show_subscribe
-        .subscribe
-          Download or subscribe to these calendars:
-          %ul
-            -@data[:calendars].each do |cal|
-              %li
-                =h cal[:title]
-                %a{ :href => gcal_ical_url(cal[:name]) } Download (iCal)
-                %a{ :href => gcal_feed_url(cal[:name]) } Subscribe
-      -if @show_credits
-        .fork
-          Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
+    #container
+      =yield
+      %footer
+        =@errors.join(" ")
+        -if @show_credits
+          .fork
+            Powered by <a href="http://github.com/Aupajo/sinatra-gcal">Sinatra GCal</a>.
     

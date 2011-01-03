@@ -386,6 +386,24 @@ get '/calendar' do
   end
   calendars.sort! { |a, b| a[:title] <=> b[:title] }
   @data = { :calendars => calendars }
+  @font_styles =<<EOSTYLE
+  <style type='text/css'>
+  body { 
+    text-align: center;
+    min-width: 850px;
+    font-family: Arial, Helvetica, sans serif; }
+  dd {
+    margin-bottom: 1em;
+  }
+  div#container { 
+    text-align: left;
+    margin-left: auto;
+    margin-right: auto;
+    width: 820px;
+    position: relative; }
+  </style>
+EOSTYLE
+
   haml :calendar
 end
 
