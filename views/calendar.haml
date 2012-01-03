@@ -5,16 +5,47 @@
   :style => "border-width: 0", :frameborder => "0", :scrolling => "no"}
 %h4 iCal Subscriptions
 %p 
-  To subscribe to any of these calendars in iCal, first copy the calendar's
-  feed URL from the list below to the clipboard, then select  
-  %strong Subscribe...
-  from iCal's Calendar menu, and paste the URL into the 
-  %strong Calendar URL
-  text box.
+  To subscribe to any of these calendars in iCal:
+%ol
+  %li Copy the calendar's URL from the list below to the clipboard
+  %li 
+    Select  
+    %strong Subscribe...
+    from iCal's Calendar menu
+  %li
+    Paste the URL into the 
+    %strong Calendar URL
+    text box.
 %dl
-  %dt District Calendar Feed
+  %dt District Calendar URL
   %dd= gcal_ical_url('district_public')
-  %dt Bacich Calendar Feed
+  %dt Bacich Calendar URL
   %dd= gcal_ical_url('bacich_public')
-  %dt Kent Calendar Feed
+  %dt Kent Calendar URL
+  %dd= gcal_ical_url('kent_public')
+%h4 Google Calendar Subscriptions
+%p
+  To view the Kentfield schools’ individual calendars within your personal 
+  Google calendar:
+%ol
+  %li 
+    Under 
+    %strong Other Calendars
+    (bottom left of your Google Calendar window) choose 
+    %strong Add: Add by URL
+  %li
+    Copy and paste one of the URLs shown below into the entry box that appears, 
+    depending on which calendar you want to view
+  %li
+    Check 
+    %strong Make the calendar publicly accessible
+  %li
+    Click 
+    %strong Add Calendar
+%dl
+  %dt District Calendar URL
+  %dd= gcal_ical_url('district_public')
+  %dt Bacich Calendar URL
+  %dd= gcal_ical_url('bacich_public')
+  %dt Kent Calendar URL
   %dd= gcal_ical_url('kent_public')
