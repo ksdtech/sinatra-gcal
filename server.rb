@@ -14,11 +14,11 @@ require 'rubygems'
 # 'bundle check' and 'bundle lock'.
 
 require 'sinatra'
+require 'sass'
 require 'logger'
 require 'memcache'
 require 'json'
 require 'haml'
-require 'sass'
 require 'tzinfo'
 require 'net/https'
 require 'uri'
@@ -160,13 +160,16 @@ helpers do
     color.upcase
   end
   
+  # "https://www.google.com/calendar/embed?height=600&amp;wkst=1&amp;bgcolor=%23FFFFFF&amp;src=kentfieldschools.org_mqupj17t11lobrd52otobpst3g%40group.calendar.google.com&amp;color=%232952A3&amp;src=kentfieldschools.org_f0hhqgo35s75flqaaiku0cse0s%40group.calendar.google.com&amp;color=%23A32929&amp;src=kentfieldschools.org_o6gfv0t236oiqa0lqcl8sfngss%40group.calendar.google.com&amp;color=%23BE6D00&amp;ctz=America%2FLos_Angeles"
+  
   def gcal_embed_url(cals)
-    url = "http://www.google.com/calendar/hosted/#{options.apps_domain}/embed?showTitle=0&showTz=0&height=600&wkst=1&bgcolor=#FFFFFF"
+    path = "http://www.google.com/calendar/embed"
+    qs = "?showTitle=0&showTz=0&height=600&wkst=1&bgcolor=#FFFFFF"
     cals.each do |cal|
-      url << "&src=#{calendar_id(cal)}&color=#{calendar_color(cal)}"
+      qs << "&src=#{calendar_id(cal)}&color=#{calendar_color(cal)}"
     end
-    url << "&ctz=#{options.tzname}"
-    url
+    qs << "&ctz=#{options.tzname}"
+    path + escape_qs(qs)
   end
   
   def gcal_ical_url(calendar_name)
@@ -265,8 +268,8 @@ helpers do
     data
   end
   
-  def embed_escape(s)
-    escape_html(s).gsub(/\#/, '%23').gsub(/\@/, '%40')
+  def escape_qs(s)
+    URI.escape(s, /[ @#\/]/)
   end
   
   def get_data(cals, today, days, limit, tags, refresh, return_days=false)
