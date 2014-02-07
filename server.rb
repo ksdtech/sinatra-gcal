@@ -14,7 +14,7 @@ require 'rubygems'
 # 'bundle check' and 'bundle lock'.
 
 require 'sinatra'
-require 'sass'
+# require 'sass'
 require 'logger'
 require 'memcache'
 require 'json'
